@@ -1,20 +1,9 @@
 % Performance Profiling Howto v1.0  
 % Tamás Dezső  
 % Oct 7, 2025  
-<!-- pandoc perf_howto.md -o perf_howto_v1.0.pdf \
-    -V papersize:A4 \
-    -V documentclass=article \
-    -V geometry:margin=1in \
-    -V colorlinks \
-    --toc \
-    --toc-depth=2 \
-    --pdf-engine=xelatex \
-    -V monofont='Ubuntu Mono'
--->
-
 
 Perf
-----
+====
 
 Perf is a universal performance measurement tool widely available on
 Linux that does not need the code or the build system be modified to
@@ -31,7 +20,8 @@ and broad usage scenario, ensuring that the collected performance data
 accurately reflects typical behavior.
 
 
-### Statistics
+Statistics
+----------
 
 ```bash
 make
@@ -69,7 +59,8 @@ E.g.,
 ```
 
 
-### Branch Miss Profile
+Branch Miss Profile
+-------------------
 
 ```bash
 # perf_branch-misses.tf
@@ -84,7 +75,7 @@ assembly and C source lines.
 
 
 FlameGraph
-----------
+==========
 
 FlameGraph is a visualization of stack traces of profiled software
 so that the most frequent code-paths can be identified quickly and
@@ -110,7 +101,7 @@ perf script |
 
 
 Call Graph
-----------
+==========
 
 `gprof2dot` is a Python script to convert the output from many
 profilers (e.g., perf) into a dot graph. The call graph generated from
