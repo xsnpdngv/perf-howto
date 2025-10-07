@@ -1,2 +1,6 @@
+perf.data
+*.script
+*.svg
+*.dot
 *.pdf
 tmp

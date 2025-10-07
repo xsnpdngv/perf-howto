@@ -124,8 +124,12 @@ Each edge (arrow) represents a function call.
 
 ```bash
 git clone https://github.com/jrfonseca/gprof2dot
-G2D=~git/gprof2dot
+# gprof2dot/gprof2dot.py
 
+# dot file to interactively browse with xdot:
+perf script | gprof2dot -f perf > xy_module_callgraph.dot
+
+# pdf output
 perf script |
     ${G2D}/gprof2dot.py -f perf |
     dot -Tpdf -o xy_module_callgraph.pdf \
