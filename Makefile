@@ -7,9 +7,9 @@ SRC_MD     = README.md
 DOC_PDF    = perf_howto_v1.0.pdf
 PERF_DATA  = perf.data
 PERF_SCRIPT = perf.script
-CALL_DOT   = $(NAME)_callgraph_$(DATE).dot
-CALL_PDF   = $(NAME)_callgraph_$(DATE).pdf
-FLAME_SVG  = $(NAME)_flamegraph_$(DATE).svg
+CALL_DOT   = "$(NAME)_callgraph_$(DATE).dot"
+CALL_PDF   = "$(NAME)_callgraph_$(DATE).pdf"
+FLAME_SVG  = "$(NAME)_flamegraph_$(DATE).svg"
 
 # === Flamegraph path (set this to your Flamegraph directory) ===
 FG ?= $(HOME)/git/FlameGraph
