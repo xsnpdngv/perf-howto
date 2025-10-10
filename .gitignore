@@ -3,4 +3,5 @@ perf.data
 *.svg
 *.dot
 *.pdf
+*.flt
 tmp

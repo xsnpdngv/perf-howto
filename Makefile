@@ -3,7 +3,7 @@ NAME ?= perf
 
 CALLGRAPH_NODE_THRES_PCT = 0.5 # eliminate nodes below this threshold [default: 0.5]
 CALLGRAPH_EDGE_THRES_PCT = 0.1 # eliminate edges below this threshold [default: 0.1]
-CALLGRAPH_THEME_SKEW = 0.05    # skew the colorization curve.
+CALLGRAPH_THEME_SKEW = 0.05    # skew the colorization curve,
                                # Values < 1.0 give more variety to lower percentages
                                # Values > 1.0 give less variety to lower percentages
 
@@ -14,7 +14,9 @@ DATE = $(shell date +%Y-%m-%d)
 SRC_MD     = README.md
 DOC_PDF    = perf_howto_v1.0.pdf
 PERF_DATA  = perf.data
-PERF_SCRIPT= perf.script
+PERF_SCRIPT = perf.script
+PERF_SCRIPT_FLT = perf.script.flt
+
 CALL_DOT   = "$(NAME)_callgraph_$(DATE).dot"
 CALL_PDF   = "$(NAME)_callgraph_$(DATE).pdf"
 FLAME_SVG  = "$(NAME)_flamegraph_$(DATE).svg"
@@ -35,6 +37,7 @@ GPROF_OPTS = \
     --format=perf \
     --strip --wrap \
     --skew=$(CALLGRAPH_THEME_SKEW) \
+    --color-nodes-by-selftime \
     --node-thres=$(CALLGRAPH_NODE_THRES_PCT) \
     --edge-thres=$(CALLGRAPH_EDGE_THRES_PCT)
 
@@ -53,45 +56,53 @@ all: doc
 doc: $(DOC_PDF)
 
 $(DOC_PDF): $(SRC_MD)
-	pandoc $(SRC_MD) $(PANDOC_OPTS) -o $@ 
+	pandoc $< $(PANDOC_OPTS) -o $@ 
 
 
 # === Perf script generation ===
 # Only create perf.script if it doesn't exist and perf.data is available
 $(PERF_SCRIPT):
-	@if [ -f $(PERF_SCRIPT) ]; then \
-		echo "✔ $(PERF_SCRIPT) already exists, skipping generation."; \
+	@if [ -f $@ ]; then \
+		echo "✔ $@ already exists, skipping generation."; \
 	elif [ -f $(PERF_DATA) ]; then \
-		echo "🧩 Generating $(PERF_SCRIPT) from $(PERF_DATA)..."; \
-		perf script > $(PERF_SCRIPT); \
+		echo "🧩 Generating $@ from $(PERF_DATA)..."; \
+		perf script > $@; \
 	else \
-		echo "❌ Neither $(PERF_SCRIPT) nor $(PERF_DATA) exist. Cannot continue."; \
+		echo "❌ Neither $@ nor $(PERF_DATA) exist. Cannot continue."; \
 		exit 1; \
 	fi
+
+$(PERF_SCRIPT_FLT): $(PERF_SCRIPT)
+	( sed 's/@plt//g' \
+	| grep -v ' __libc_start_main\+' \
+	| grep -v ' _start\+' \
+	) < $< > $@
 
 
 # === Callgraph ===
 cg callgraph: $(CALL_PDF)
 
-$(CALL_DOT): $(PERF_SCRIPT)
-	gprof2dot $(GPROF_OPTS) --output=$@ $<
+$(CALL_DOT): $(PERF_SCRIPT_FLT)
+	( gprof2dot $(GPROF_OPTS) \
+	) < $< > $@
 
 $(CALL_PDF): $(CALL_DOT)
-	dot $(DOT_OPTS) -o $@ $<
+	( dot $(DOT_OPTS) \
+	) < $< > $@
 
 
 # === Flamegraph ===
 fg flamegraph: $(FLAME_SVG)
 
-$(FLAME_SVG): $(PERF_SCRIPT)
-	$(FLAMEGRAPH_DIR)/stackcollapse-perf.pl $< \
-	| sed -E 's/^(__libc_start_main|_start);//; s/;(__libc_start_main|_start)//g; s/;;/;/g; s/^;//; s/;$$//' \
-	| $(FLAMEGRAPH_DIR)/flamegraph.pl  --title "$(NAME) cpu profile $(DATE)" > $@
+$(FLAME_SVG): $(PERF_SCRIPT_FLT)
+	( $(FLAMEGRAPH_DIR)/stackcollapse-perf.pl \
+	| $(FLAMEGRAPH_DIR)/flamegraph.pl  --title "$(NAME) cpu profile $(DATE)") \
+	< $< > $@
 
 
 # === Cleanup ===
 clean:
-	rm -f *.svg *.dot *.pdf
+	rm -f *.flt *.svg *.dot *.pdf
 
 
 # === Rebuild everything ===
