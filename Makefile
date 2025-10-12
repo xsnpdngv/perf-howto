@@ -1,6 +1,8 @@
-# === Configuration ===
+# === From environment ===
 NAME ?= perf
+SUB  ?=
 
+# === Configuration ===
 CALLGRAPH_NODE_THRES_PCT = 0.5 # eliminate nodes below this threshold [default: 0.5]
 CALLGRAPH_EDGE_THRES_PCT = 0.1 # eliminate edges below this threshold [default: 0.1]
 CALLGRAPH_THEME_SKEW = 0.05    # skew the colorization curve,
@@ -96,7 +98,9 @@ fg flamegraph: $(FLAME_SVG)
 
 $(FLAME_SVG): $(PERF_SCRIPT_FLT)
 	( $(FLAMEGRAPH_DIR)/stackcollapse-perf.pl \
-	| $(FLAMEGRAPH_DIR)/flamegraph.pl  --title "$(NAME) cpu profile $(DATE)") \
+	| $(FLAMEGRAPH_DIR)/flamegraph.pl \
+	  --title "$(NAME) cpu profile $(DATE)" \
+	  --subtitle "$(SUB)") \
 	< $< > $@
 
 
