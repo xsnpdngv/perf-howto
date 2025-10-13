@@ -14,7 +14,7 @@ FLAMEGRAPH_DIR = $(HOME)/git/FlameGraph
 DATE = $(shell date +%Y-%m-%d)
 
 SRC_MD     = README.md
-DOC_PDF    = perf_howto_v1.0.pdf
+DOC_PDF    = Per4M_v1.0.pdf
 PERF_DATA  = perf.data
 PERF_SCRIPT = perf.script
 PERF_SCRIPT_FLT = perf.script.flt
@@ -51,7 +51,7 @@ DOT_OPTS = \
 
 
 # === Default target ===
-all: doc
+all: callgraph flamegraph
 
 
 # === Documentation ===
@@ -99,14 +99,14 @@ fg flamegraph: $(FLAME_SVG)
 $(FLAME_SVG): $(PERF_SCRIPT_FLT)
 	( $(FLAMEGRAPH_DIR)/stackcollapse-perf.pl \
 	| $(FLAMEGRAPH_DIR)/flamegraph.pl \
-	  --title "$(NAME) cpu profile $(DATE)" \
-	  --subtitle "$(SUB)") \
-	< $< > $@
+	    --title "$(NAME) cpu profile $(DATE)" \
+	    --subtitle "$(SUB)" \
+	) < $< > $@
 
 
 # === Cleanup ===
 clean:
-	rm -f *.flt *.svg *.dot *.pdf
+	rm -f *.doc *.flt *.svg *.dot *.pdf
 
 
 # === Rebuild everything ===

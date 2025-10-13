@@ -1,6 +1,16 @@
-% Performance Profiling Howto v1.0  
+% Performance Profiling v1.0  
 % Tamás Dezső  
-% Oct 7, 2025  
+% Oct 13, 2025  
+
+
+Abstract
+========
+
+`Per4M` is a Makefile based tool that helps creating call graphs and
+flamegraphs from so called call-graph records saved by `perf`. To
+produce such visualizations it uses the `flamegraph`, `gprof2dot` and
+`dot` programs.
+
 
 Perf
 ====
@@ -24,17 +34,16 @@ Statistics
 ----------
 
 ```bash
-make
-cd exec
-rm /dev/shm/*_${USER} /dev/mqueue/*_${USER}
-perf stat --detailed sfw_m -c mtest/sm_sip/perf/sfw.sm_sip.cfg -s sch/sfw.sm_sip.cfg.sch &
-python/runTestFlow.py --keepMqsAndShms mtest/sm_sip/perf/perf_manual.tf
-fg
-# ctrl+C
+# Detailed CPU counter statistics (includes extras) for the specified command:
+perf stat --detailed command
+
+# CPU counter statistics for the process with the given PID, for 10 seconds:
+perf stat -P PID sleep 10
 ```
 
 E.g.,
-```
+```bash
+perf stat --detailed sfw_m -c mtest/sm_sip/perf/sfw.sm_sip.cfg -s sch/sfw.sm_sip.cfg.sch
 2025-10-03T23:56:43.371 sfw_m.c(685): Termination/interrupt signal received
 
  Performance counter stats for 'sfw_m -c mtest/sm_sip/perf/sfw.sm_sip.cfg -s sch/sfw.sm_sip.cfg.sch':
@@ -59,19 +68,21 @@ E.g.,
 ```
 
 
-Branch Miss Profile
--------------------
+Diagnostics Report
+------------------
 
 ```bash
-# perf_branch-misses.tf
-#      "start" : "perf record -e branches,branch-misses -b sfw_m -c mtest/sm_sip/perf/sfw.sm_sip.cfg -s sch/sfw.sm_sip.cfg.sch"
-#                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-python/runTestFlow.py mtest/sm_sip/perf/perf_branch-misses.tf
-perf report
+perf list # shows available CPU performance measurement counters
+perf record -e branches,branch-misses,cache-references,cache-misses -b command # writes perf.data
+perf report # displays report from perf.data
 ```
 
 Then the report is browsable and even hot paths can be annotated with
 assembly and C source lines.
+
+- `branches` and `branch-misses` measure how often branches occur and how frequently they are mispredicted.
+- `cache-references` and `cache-misses` track overall cache accesses and misses across all cache levels.
+- `L1-dcache-loads` and `L1-dcache-load-misses` show how often data loads miss in the L1 data cache.
 
 
 FlameGraph
@@ -86,39 +97,24 @@ accurately
 
 ```bash
 git clone https://github.com/brendangregg/FlameGraph
-FG=~/git/FlameGraph
+FG=${PWD}/FlameGraph
 
-# perf.tf
-#      "start" : "perf record --call-graph lbr sfw_m -c mtest/sm_sip/perf/sfw.sm_sip.cfg -s sch/sfw.sm_sip.cfg.sch"
-#                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-python/runTestFlow.py mtest/sm_sip/perf/perf.tf
+perf record --call-graph lbr command # lbr: Last Branch Record
 
-perf script |
-    ${FG}/stackcollapse-perf.pl |
-    ${FG}/flamegraph.pl --title "XY Module CPU Profile" --subtitle "YYYY-MM-DD" >
-    xy_module_flamegraph.svg
+perf script \
+    | ${FG}/stackcollapse-perf.pl \
+    | ${FG}/flamegraph.pl \
+    > xy_module_flamegraph.svg
 ```
 
 
 Call Graph
 ==========
 
-`gprof2dot` is a Python script to convert the output from many
-profilers (e.g., perf) into a dot graph. The call graph generated from
-perf and gprof2dot visualizes how functions in the program call each
-other and where the CPU time is spent.
-
-Each node in the graph represents a function.
-
-- The size or color intensity of a node corresponds to how much total
-  CPU time that function (and its callees) consumed.
-- Functions that appear larger or darker are typically performance hotspots.
-
-Each edge (arrow) represents a function call.
-
-- The direction shows the caller → callee relationship.
-- The width or weight of an edge indicates how often that call occurred
-  or how much time it contributed.
+`gprof2dot` is a Python script to convert the output from many profilers
+(e.g., perf) into a dot graph. The call graph is generated from perf and
+gprof2dot visualizes how functions in the program call each other and
+where the CPU time is spent.
 
 [gprof2dot on GitHub](https://github.com/jrfonseca/gprof2dot)
 
@@ -126,13 +122,41 @@ Each edge (arrow) represents a function call.
 git clone https://github.com/jrfonseca/gprof2dot
 # gprof2dot/gprof2dot.py
 
-# dot file to interactively browse with xdot:
-perf script | gprof2dot -f perf > xy_module_callgraph.dot
+# dot file output to interactively browse with xdot:
+perf script \
+    | gprof2dot -f perf \
+    > callgraph.dot
 
 # pdf output
-perf script |
-    ${G2D}/gprof2dot.py -f perf |
-    dot -Tpdf -o xy_module_callgraph.pdf \
-        -Glabel="XY Module CPU Profile\nYYYY-MM-DD" \
-        -Gfontsize=24 -Glabelloc=top
+dot -Tpdf -o callgraph.pdf < callgraph.dot
 ```
+
+
+Per4M
+=====
+
+Record call graph data of the `command` and generate call graph and
+flamegraph via the Makefile. Tune the parameters inside the Makefile if
+needed.
+
+```bash
+perf record --call-graph lbr command
+NAME=my_program SUB=subtitle make
+# outputs:
+# $(NAME)_callgraph_YYYY-MM-DD.dot
+# $(NAME)_callgraph_YYYY-MM-DD.pdf
+# $(NAME)_flamegraph_YYYY-MM-DD.svg
+```
+
+If `per4m`, `flamegraph` and `gprof2dot` are available elsewhere, make
+`perf` produce text output from the recorded data, and use it on the
+remote to create the graphs, e.g.,
+
+```bash
+perf script > perf.script
+scp perf.script user@elswhere:path
+ssh user@elsewhere
+cd git/per4m
+make
+```
+
